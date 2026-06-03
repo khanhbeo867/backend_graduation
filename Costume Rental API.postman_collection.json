@@ -1,0 +1,2769 @@
+{
+    "info": {
+        "_postman_id": "d43e16db-3258-4a92-bb22-63436b50a6e5",
+        "name": "Costume Rental API",
+        "description": "# API Thuê Trang Phục\n\nĐã cập nhật theo các route Laravel hiện tại trong repository này.\n\nBase URL: `{{base_url}}`, mặc định `http://localhost:8000/api`.\nChạy `Xác thực / Đăng nhập` trước để tự động lưu `{{access_token}}`.\n\nTên trường quan trọng:\n- Người dùng: `username`, `password`, `role`, `employee_id`, `is_active`.\n- Nhân viên: `full_name`, `email`, `citizen_id_number`, `phone`, `address`, `position`, `work_status`, `hire_date`, `remarks`.\n- Danh mục: `name`, `slug`, `type`, `is_active`.\n- Tải ảnh lên: form-data `data={\"category_id\": 1}` và `files`; backend tự chuyển file upload sang WebP trước khi lưu.\n- Sản phẩm catalog: `category_id`, `images`, `hashtags`, `rental_price_per_day`.",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+        {
+            "name": "Auth",
+            "item": [
+                {
+                    "name": "Login",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/auth/login",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "login"
+                            ]
+                        },
+                        "description": "Đăng nhập và lưu JWT token.",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"username\": \"quanghiep031\",\n  \"password\": \"123123\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "const jsonData = pm.response.json();",
+                                    "pm.test('Login status is 200', function () { pm.response.to.have.status(200); });",
+                                    "if (pm.response.code === 200 && jsonData.metadata) {",
+                                    "  const token = jsonData.metadata.access_token;",
+                                    "  const user = jsonData.metadata.user || {};",
+                                    "  if (token) pm.collectionVariables.set('access_token', token);",
+                                    "  if (user.id) pm.collectionVariables.set('user_id', String(user.id));",
+                                    "  if (user.employee_id) pm.collectionVariables.set('employee_id', String(user.employee_id));",
+                                    "}"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Me",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/auth/me",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "me"
+                            ]
+                        },
+                        "description": "Lấy thông tin người dùng hiện tại."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Refresh Token",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/auth/refresh",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "refresh"
+                            ]
+                        },
+                        "description": "Làm mới JWT token."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Logout",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/auth/logout",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "logout"
+                            ]
+                        },
+                        "description": "Đăng xuất token hiện tại."
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "Users",
+            "item": [
+                {
+                    "name": "Get All Users",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/users?_expand=employee",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "users"
+                            ],
+                            "query": [
+                                {
+                                    "key": "_expand",
+                                    "value": "employee"
+                                }
+                            ]
+                        },
+                        "description": "Chỉ dành cho admin. Lấy danh sách người dùng."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get User Detail",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/users/{{user_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "users",
+                                "{{user_id}}"
+                            ]
+                        },
+                        "description": "Chỉ dành cho admin. Xem chi tiết người dùng."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Create User",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/users/create",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "users",
+                                "create"
+                            ]
+                        },
+                        "description": "Chỉ dành cho admin. Schema người dùng hiện tại không có trường email.",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"username\": \"admin02\",\n  \"password\": \"123123\",\n  \"role\": \"ADMIN\",\n  \"employee_id\": null,\n  \"is_active\": true\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "const jsonData = pm.response.json();",
+                                    "if (jsonData.metadata && jsonData.metadata.id) {",
+                                    "  pm.collectionVariables.set('user_id', String(jsonData.metadata.id));",
+                                    "}"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Update User",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/users/update/{{user_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "users",
+                                "update",
+                                "{{user_id}}"
+                            ]
+                        },
+                        "description": "Chỉ dành cho admin. Cập nhật người dùng.",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"role\": \"USER\",\n  \"is_active\": true\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Delete User",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/users/delete/{{user_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "users",
+                                "delete",
+                                "{{user_id}}"
+                            ]
+                        },
+                        "description": "Chỉ dành cho admin. Xóa mềm người dùng."
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "Employees",
+            "item": [
+                {
+                    "name": "Get All Employees",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/employees?_expand=user&position:in=MANAGER,WAREHOUSE_MANAGER",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "employees"
+                            ],
+                            "query": [
+                                {
+                                    "key": "_expand",
+                                    "value": "user"
+                                },
+                                {
+                                    "key": "position:in",
+                                    "value": "MANAGER,WAREHOUSE_MANAGER"
+                                }
+                            ]
+                        },
+                        "description": "Chỉ dành cho admin. Hỗ trợ `_expand` và bộ lọc theo trường."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Employee Detail",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/employees/{{employee_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "employees",
+                                "{{employee_id}}"
+                            ]
+                        },
+                        "description": "Chỉ dành cho admin. Xem chi tiết nhân viên."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Create Employee",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/employees/create",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "employees",
+                                "create"
+                            ]
+                        },
+                        "description": "Chỉ dành cho admin. `employee_code` và `work_status` mặc định sẽ được tự động tạo.",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"full_name\": \"Nguyễn Văn A\",\n  \"citizen_id_number\": \"123123123123\",\n  \"phone\": \"0336089900\",\n  \"address\": \"Hải Phòng\",\n  \"email\": \"nguyenvana@example.com\",\n  \"position\": \"TECHNICAL_CREW\",\n  \"remarks\": \"Tạo từ Postman\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "const jsonData = pm.response.json();",
+                                    "if (jsonData.metadata && jsonData.metadata.id) {",
+                                    "  pm.collectionVariables.set('employee_id', String(jsonData.metadata.id));",
+                                    "}"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Update Employee",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/employees/update/{{employee_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "employees",
+                                "update",
+                                "{{employee_id}}"
+                            ]
+                        },
+                        "description": "Chỉ dành cho admin. Cập nhật nhân viên.",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"phone\": \"0988123456\",\n  \"address\": \"Hà Nội\",\n  \"work_status\": \"ON_LEAVE\",\n  \"is_active\": true\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Delete Employee",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/employees/delete/{{employee_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "employees",
+                                "delete",
+                                "{{employee_id}}"
+                            ]
+                        },
+                        "description": "Chỉ dành cho admin. Xóa mềm nhân viên."
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "Item Categories",
+            "item": [
+                {
+                    "name": "Get All Item Categories",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/item-categories?type:eq=COSTUME",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "item-categories"
+                            ],
+                            "query": [
+                                {
+                                    "key": "type:eq",
+                                    "value": "COSTUME"
+                                }
+                            ]
+                        },
+                        "description": "Lấy danh sách danh mục đang hoạt động."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Categories With Embedded Items",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/categories?type:eq=COSTUME&_embed=costumes,equipment_props",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "categories"
+                            ],
+                            "query": [
+                                {
+                                    "key": "type:eq",
+                                    "value": "COSTUME"
+                                },
+                                {
+                                    "key": "_embed",
+                                    "value": "costumes,equipment_props"
+                                }
+                            ]
+                        },
+                        "description": "Route bí danh, có thể nhúng thêm sản phẩm catalog liên quan."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Create Item Category",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/item-categories",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "item-categories"
+                            ]
+                        },
+                        "description": "Tạo danh mục. Nếu bỏ trống slug thì hệ thống sẽ tự sinh.",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"name\": \"Hoa múa\",\n  \"type\": \"EQUIPMENT_PROPS\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "const jsonData = pm.response.json();",
+                                    "if (jsonData.metadata && jsonData.metadata.id) {",
+                                    "  pm.collectionVariables.set('category_id', String(jsonData.metadata.id));",
+                                    "}"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Update Item Category",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/item-categories/{{category_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "item-categories",
+                                "{{category_id}}"
+                            ]
+                        },
+                        "description": "Cập nhật danh mục.",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"name\": \"Trang phục Truyền thống\",\n  \"type\": \"COSTUME\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Delete Item Category",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/item-categories/{{category_id}}?permanently=true",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "item-categories",
+                                "{{category_id}}"
+                            ],
+                            "query": [
+                                {
+                                    "key": "permanently",
+                                    "value": "true"
+                                }
+                            ]
+                        },
+                        "description": "Xóa danh mục. Bỏ query để xóa mềm."
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "Images Gallery",
+            "item": [
+                {
+                    "name": "Upload Gallery Images",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/images-gallery/upload",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "images-gallery",
+                                "upload"
+                            ]
+                        },
+                        "description": "Tải file lên. Backend sẽ chuyển file đã lưu sang WebP.",
+                        "body": {
+                            "mode": "formdata",
+                            "formdata": [
+                                {
+                                    "key": "data",
+                                    "value": "{\"category_id\": {{category_id}}}",
+                                    "type": "text"
+                                },
+                                {
+                                    "key": "files",
+                                    "type": "file",
+                                    "src": []
+                                }
+                            ]
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "const jsonData = pm.response.json();",
+                                    "if (Array.isArray(jsonData.metadata) && jsonData.metadata[0] && jsonData.metadata[0].id) {",
+                                    "  pm.collectionVariables.set('image_id', String(jsonData.metadata[0].id));",
+                                    "}"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Get All Images",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/images-gallery?_page=1&_per_page=10&_expand=category",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "images-gallery"
+                            ],
+                            "query": [
+                                {
+                                    "key": "_page",
+                                    "value": "1"
+                                },
+                                {
+                                    "key": "_per_page",
+                                    "value": "10"
+                                },
+                                {
+                                    "key": "_expand",
+                                    "value": "category"
+                                }
+                            ]
+                        },
+                        "description": "Lấy danh sách ảnh đang hoạt động. Phân trang được bật khi có `_page` hoặc `_per_page`."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Image Detail",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/images-gallery/{{image_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "images-gallery",
+                                "{{image_id}}"
+                            ]
+                        },
+                        "description": "Xem chi tiết một ảnh."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Update Image",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/images-gallery/{{image_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "images-gallery",
+                                "{{image_id}}"
+                            ]
+                        },
+                        "description": "Cập nhật metadata của ảnh.",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"file_name\": \"doi-ten.webp\",\n  \"category_id\": {{category_id}},\n  \"is_active\": true\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Update Image Legacy Route",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/images-gallery/update/{{image_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "images-gallery",
+                                "update",
+                                "{{image_id}}"
+                            ]
+                        },
+                        "description": "Route cập nhật cũ vẫn được backend giữ lại.",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"file_name\": \"doi-ten.webp\",\n  \"category_id\": {{category_id}}\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Delete Image",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/images-gallery/{{image_id}}?permanantly=true",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "images-gallery",
+                                "{{image_id}}"
+                            ],
+                            "query": [
+                                {
+                                    "key": "permanantly",
+                                    "value": "true"
+                                }
+                            ]
+                        },
+                        "description": "Xóa ảnh. Bỏ query để xóa mềm."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Delete Image Legacy Route",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/images/delete/{{image_id}}?permanantly=true",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "images",
+                                "delete",
+                                "{{image_id}}"
+                            ],
+                            "query": [
+                                {
+                                    "key": "permanantly",
+                                    "value": "true"
+                                }
+                            ]
+                        },
+                        "description": "Route xóa cũ vẫn được backend giữ lại."
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "Costumes",
+            "item": [
+                {
+                    "name": "Get All Costumes",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/costumes?id:in={{costume_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "costumes"
+                            ],
+                            "query": [
+                                {
+                                    "key": "id:in",
+                                    "value": "{{costume_id}}"
+                                }
+                            ]
+                        },
+                        "description": "Lấy danh sách trang phục đang hoạt động."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Create Costume",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/costumes",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "costumes"
+                            ]
+                        },
+                        "description": "Tạo trang phục. Danh mục phải có type `COSTUME`.",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"name\": \"Áo Tấc xanh bạc hà\",\n  \"category_id\": {{category_id}},\n  \"color\": \"#5b958c\",\n  \"sizes\": [\"S\", \"M\", \"L\", \"XL\"],\n  \"unit\": \"SET\",\n  \"gender\": \"FEMALE\",\n  \"images\": [{{image_id}}],\n  \"rental_price_per_day\": 200000,\n  \"description\": \"Áo tấc xanh cổ truyền\",\n  \"hashtags\": [\"áo tấc\"]\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "const jsonData = pm.response.json();",
+                                    "if (jsonData.metadata && jsonData.metadata.id) {",
+                                    "  pm.collectionVariables.set('costume_id', String(jsonData.metadata.id));",
+                                    "}"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Update Costume",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/costumes/{{costume_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "costumes",
+                                "{{costume_id}}"
+                            ]
+                        },
+                        "description": "Cập nhật trang phục.",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"images\": [{{image_id}}],\n  \"hashtags\": [\"áo tấc\"]\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Delete Costume",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/costumes/{{costume_id}}?permanantly=true",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "costumes",
+                                "{{costume_id}}"
+                            ],
+                            "query": [
+                                {
+                                    "key": "permanantly",
+                                    "value": "true"
+                                }
+                            ]
+                        },
+                        "description": "Xóa mềm trang phục."
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "Equipment Props",
+            "item": [
+                {
+                    "name": "Get All Equipment Props",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/equipment-props",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "equipment-props"
+                            ]
+                        },
+                        "description": "Lấy danh sách đạo cụ thiết bị đang hoạt động."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Create Equipment Prop",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/equipment-props",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "equipment-props"
+                            ]
+                        },
+                        "description": "Tạo đạo cụ. Danh mục phải có type `EQUIPMENT_PROPS`. `demensions` được chấp nhận như alias của `dimensions`.",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"name\": \"Hoa múa cam tay Huong duong\",\n  \"category_id\": {{category_id}},\n  \"unit\": \"Cặp\",\n  \"rental_price_per_day\": 50000,\n  \"weight_kg\": 0.5,\n  \"demensions\": {\n    \"width_cm\": 60,\n    \"height_cm\": 60,\n    \"depth_cm\": 10\n  },\n  \"is_fragile\": false,\n  \"description\": \"Đạo cụ biểu diễn\",\n  \"hashtags\": [\"hoa múa\"],\n  \"image_id\": {{image_id}}\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "const jsonData = pm.response.json();",
+                                    "if (jsonData.metadata && jsonData.metadata.id) {",
+                                    "  pm.collectionVariables.set('equipment_prop_id', String(jsonData.metadata.id));",
+                                    "}"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Update Equipment Prop",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/equipment-props/{{equipment_prop_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "equipment-props",
+                                "{{equipment_prop_id}}"
+                            ]
+                        },
+                        "description": "Cập nhật đạo cụ thiết bị.",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"dimensions\": {\n    \"width_cm\": 40,\n    \"height_cm\": 40,\n    \"depth_cm\": 8\n  },\n  \"images\": [{{image_id}}]\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Delete Equipment Prop",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/equipment-props/{{equipment_prop_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "equipment-props",
+                                "{{equipment_prop_id}}"
+                            ]
+                        },
+                        "description": "Xóa mềm đạo cụ thiết bị."
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "Workflow - Customers",
+            "item": [
+                {
+                    "name": "List Customers",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/customers",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "customers"
+                            ]
+                        },
+                        "description": "List customers."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Show Sample Customer",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/customers/{{customer_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "customers",
+                                "{{customer_id}}"
+                            ]
+                        },
+                        "description": "Show seeded customer."
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "Workflow - Inventory",
+            "item": [
+                {
+                    "name": "Available Props",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/inventory/available?warehouse_id={{prop_warehouse_id}}&equipment_prop_id={{borrow_equipment_prop_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "inventory",
+                                "available?warehouse_id={{prop_warehouse_id}}&equipment_prop_id={{borrow_equipment_prop_id}}"
+                            ]
+                        },
+                        "description": "Available prop inventory."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Available Costumes",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/inventory/available?warehouse_id={{costume_warehouse_id}}&equipment_prop_id={{rental_equipment_prop_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "inventory",
+                                "available?warehouse_id={{costume_warehouse_id}}&equipment_prop_id={{rental_equipment_prop_id}}"
+                            ]
+                        },
+                        "description": "Available costume inventory."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Sample Maintenance Timeline",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/inventory/{{sample_maintenance_inventory_item_id}}/timeline",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "inventory",
+                                "{{sample_maintenance_inventory_item_id}}",
+                                "timeline"
+                            ]
+                        },
+                        "description": "Timeline of seeded maintenance item."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Inventory Transactions By Item",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/inventory-transactions?inventory_item_id={{sample_maintenance_inventory_item_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "inventory-transactions?inventory_item_id={{sample_maintenance_inventory_item_id}}"
+                            ]
+                        },
+                        "description": "Inventory transactions by item."
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "Workflow - Internal Borrow",
+            "item": [
+                {
+                    "name": "List Internal Borrow Slips",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/internal-borrow-slips",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "internal-borrow-slips"
+                            ]
+                        },
+                        "description": "List internal borrow slips."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Show Sample Internal Borrow Slip",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/internal-borrow-slips/{{sample_internal_slip_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "internal-borrow-slips",
+                                "{{sample_internal_slip_id}}"
+                            ]
+                        },
+                        "description": "Show seeded internal borrow slip."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Create Internal Borrow Slip",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/internal-borrow-slips",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "internal-borrow-slips"
+                            ]
+                        },
+                        "description": "Create internal borrow slip.",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"employee_id\": {{borrow_employee_id}},\n  \"warehouse_id\": {{prop_warehouse_id}},\n  \"borrow_date\": \"2026-05-19\",\n  \"due_date\": \"2026-05-22\",\n  \"purpose\": \"Postman internal borrow\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "const jsonData = pm.response.json();",
+                                    "if (jsonData.slip && jsonData.slip.id) pm.collectionVariables.set(\"internal_borrow_slip_id\", String(jsonData.slip.id));"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Create Internal Borrow Slip (Cancel Path)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/internal-borrow-slips",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "internal-borrow-slips"
+                            ]
+                        },
+                        "description": "Create a draft internal borrow slip for cancel flow.",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"employee_id\": {{borrow_employee_id}},\n  \"warehouse_id\": {{prop_warehouse_id}},\n  \"borrow_date\": \"2026-05-19\",\n  \"due_date\": \"2026-05-22\",\n  \"purpose\": \"Postman internal borrow\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "const jsonData = pm.response.json();",
+                                    "if (jsonData.slip && jsonData.slip.id) pm.collectionVariables.set(\"internal_borrow_cancel_slip_id\", String(jsonData.slip.id));"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Add Internal Borrow Detail",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/internal-borrow-slips/{{internal_borrow_slip_id}}/details",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "internal-borrow-slips",
+                                "{{internal_borrow_slip_id}}",
+                                "details"
+                            ]
+                        },
+                        "description": "Add internal borrow detail.",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"equipment_prop_id\": {{borrow_equipment_prop_id}},\n  \"borrowed_quantity\": 1\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "const jsonData = pm.response.json();",
+                                    "if (jsonData.detail && jsonData.detail.id) pm.collectionVariables.set(\"internal_borrow_detail_id\", String(jsonData.detail.id));"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Assign Internal Borrow Item",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/internal-borrow-slips/{{internal_borrow_slip_id}}/assign-items",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "internal-borrow-slips",
+                                "{{internal_borrow_slip_id}}",
+                                "assign-items"
+                            ]
+                        },
+                        "description": "Assign concrete inventory item.",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"assignments\": [\n    {\n      \"detail_id\": {{internal_borrow_detail_id}},\n      \"inventory_item_ids\": [{{internal_inventory_item_id}}],\n      \"condition_on_borrow_id\": 1\n    }\n  ]\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Approve Internal Borrow Slip",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/internal-borrow-slips/{{internal_borrow_slip_id}}/approve",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "internal-borrow-slips",
+                                "{{internal_borrow_slip_id}}",
+                                "approve"
+                            ]
+                        },
+                        "description": "Approve internal borrow slip.",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Checkout Internal Borrow Slip",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/internal-borrow-slips/{{internal_borrow_slip_id}}/checkout",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "internal-borrow-slips",
+                                "{{internal_borrow_slip_id}}",
+                                "checkout"
+                            ]
+                        },
+                        "description": "Checkout internal borrow slip.",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Return Internal Borrow Damaged",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/internal-borrow-slips/{{internal_borrow_slip_id}}/return",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "internal-borrow-slips",
+                                "{{internal_borrow_slip_id}}",
+                                "return"
+                            ]
+                        },
+                        "description": "Return damaged item to create incident.",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"items\": [\n    {\n      \"inventory_item_id\": {{internal_inventory_item_id}},\n      \"return_action\": \"DAMAGED\",\n      \"condition_on_return_id\": 1,\n      \"compensation_amount\": 120000,\n      \"note\": \"Hong khoa day\"\n    }\n  ]\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "const jsonData = pm.response.json();",
+                                    "if (jsonData.incident_ids && jsonData.incident_ids.length > 0) pm.collectionVariables.set(\"internal_incident_id\", String(jsonData.incident_ids[0]));"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Show Internal Incident",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/internal-incidents/{{internal_incident_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "internal-incidents",
+                                "{{internal_incident_id}}"
+                            ]
+                        },
+                        "description": "Show internal incident created above."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Resolve Internal Incident",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/internal-incidents/{{internal_incident_id}}/resolve",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "internal-incidents",
+                                "{{internal_incident_id}}",
+                                "resolve"
+                            ]
+                        },
+                        "description": "Resolve the internal incident created in return flow.",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"resolution\": \"Da ghi nhan va xu ly su co\",\n  \"compensation_amount\": 120000\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Close Internal Incident",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/internal-incidents/{{internal_incident_id}}/close",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "internal-incidents",
+                                "{{internal_incident_id}}",
+                                "close"
+                            ]
+                        },
+                        "description": "Close the resolved internal incident.",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"note\": \"Dong su co noi bo\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Cancel Internal Borrow Slip",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/internal-borrow-slips/{{internal_borrow_cancel_slip_id}}/cancel",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "internal-borrow-slips",
+                                "{{internal_borrow_cancel_slip_id}}",
+                                "cancel"
+                            ]
+                        },
+                        "description": "Cancel a separate draft internal borrow slip created by the cancel path request.",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"reason\": \"Khong con nhu cau muon\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "Workflow - Rentals",
+            "item": [
+                {
+                    "name": "List Rental Slips",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/rental-slips",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "rental-slips"
+                            ]
+                        },
+                        "description": "List rental slips."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Show Sample Rental Slip",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/rental-slips/{{sample_rental_slip_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "rental-slips",
+                                "{{sample_rental_slip_id}}"
+                            ]
+                        },
+                        "description": "Show seeded rental slip."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Create Rental Slip",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/rental-slips",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "rental-slips"
+                            ]
+                        },
+                        "description": "Create rental slip.",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"customer_id\": {{customer_id}},\n  \"warehouse_id\": {{costume_warehouse_id}},\n  \"rental_date\": \"2026-05-19\",\n  \"start_date\": \"2026-05-19\",\n  \"due_date\": \"2026-05-21\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "const jsonData = pm.response.json();",
+                                    "if (jsonData.slip && jsonData.slip.id) pm.collectionVariables.set(\"rental_slip_id\", String(jsonData.slip.id));"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Create Rental Slip (Cancel Path)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/rental-slips",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "rental-slips"
+                            ]
+                        },
+                        "description": "Create a draft rental slip for cancel flow.",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"customer_id\": {{customer_id}},\n  \"warehouse_id\": {{costume_warehouse_id}},\n  \"rental_date\": \"2026-05-19\",\n  \"start_date\": \"2026-05-19\",\n  \"due_date\": \"2026-05-21\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "const jsonData = pm.response.json();",
+                                    "if (jsonData.slip && jsonData.slip.id) pm.collectionVariables.set(\"rental_cancel_slip_id\", String(jsonData.slip.id));"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Add Rental Detail",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/rental-slips/{{rental_slip_id}}/details",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "rental-slips",
+                                "{{rental_slip_id}}",
+                                "details"
+                            ]
+                        },
+                        "description": "Add rental detail.",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"equipment_prop_id\": {{rental_equipment_prop_id}},\n  \"rented_quantity\": 2,\n  \"rental_unit_price\": 100000,\n  \"rental_days\": 2,\n  \"deposit_amount\": 50000\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "const jsonData = pm.response.json();",
+                                    "if (jsonData.detail && jsonData.detail.id) pm.collectionVariables.set(\"rental_detail_id\", String(jsonData.detail.id));"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Assign Rental Items",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/rental-slips/{{rental_slip_id}}/assign-items",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "rental-slips",
+                                "{{rental_slip_id}}",
+                                "assign-items"
+                            ]
+                        },
+                        "description": "Assign rental inventory items.",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"assignments\": [\n    {\n      \"detail_id\": {{rental_detail_id}},\n      \"inventory_item_ids\": [{{rental_inventory_item_id}}, {{rental_inventory_item_2_id}}],\n      \"condition_on_rent_id\": 1\n    }\n  ]\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Submit Rental Slip",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/rental-slips/{{rental_slip_id}}/submit",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "rental-slips",
+                                "{{rental_slip_id}}",
+                                "submit"
+                            ]
+                        },
+                        "description": "Submit rental slip.",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Approve Rental Slip",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/rental-slips/{{rental_slip_id}}/approve",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "rental-slips",
+                                "{{rental_slip_id}}",
+                                "approve"
+                            ]
+                        },
+                        "description": "Approve rental slip.",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Checkout Rental Slip",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/rental-slips/{{rental_slip_id}}/checkout",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "rental-slips",
+                                "{{rental_slip_id}}",
+                                "checkout"
+                            ]
+                        },
+                        "description": "Checkout rental slip.",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Add Rental Payment",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/rental-slips/{{rental_slip_id}}/payments",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "rental-slips",
+                                "{{rental_slip_id}}",
+                                "payments"
+                            ]
+                        },
+                        "description": "Add rental payment.",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"payment_type\": \"DEPOSIT\",\n  \"payment_date\": \"2026-05-19\",\n  \"amount\": 50000,\n  \"payment_method\": \"CASH\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Return Rental With Damage",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/rental-slips/{{rental_slip_id}}/return",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "rental-slips",
+                                "{{rental_slip_id}}",
+                                "return"
+                            ]
+                        },
+                        "description": "Return one normal item and one damaged item.",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"items\": [\n    {\n      \"inventory_item_id\": {{rental_inventory_item_id}},\n      \"return_action\": \"RETURNED\",\n      \"condition_on_return_id\": 1\n    },\n    {\n      \"inventory_item_id\": {{rental_inventory_item_2_id}},\n      \"return_action\": \"DAMAGED\",\n      \"condition_on_return_id\": 1,\n      \"compensation_amount\": 150000,\n      \"note\": \"Rach vai\"\n    }\n  ]\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "const jsonData = pm.response.json();",
+                                    "if (jsonData.incident_ids && jsonData.incident_ids.length > 0) pm.collectionVariables.set(\"rental_incident_id\", String(jsonData.incident_ids[0]));",
+                                    "if (jsonData.remaining_amount !== undefined && jsonData.remaining_amount !== null) pm.collectionVariables.set(\"rental_remaining_amount\", String(jsonData.remaining_amount));"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Show Rental Payments",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/rental-slips/{{rental_slip_id}}/payments",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "rental-slips",
+                                "{{rental_slip_id}}",
+                                "payments"
+                            ]
+                        },
+                        "description": "Show rental payment history."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Add Final Rental Payment",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/rental-slips/{{rental_slip_id}}/payments",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "rental-slips",
+                                "{{rental_slip_id}}",
+                                "payments"
+                            ]
+                        },
+                        "description": "Pay the remaining balance after return and compensation are calculated.",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"payment_type\": \"RENTAL_PAYMENT\",\n  \"payment_date\": \"2026-05-19\",\n  \"amount\": {{rental_remaining_amount}},\n  \"payment_method\": \"BANK_TRANSFER\",\n  \"note\": \"Thanh toan phan con lai\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Close Rental Slip",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/rental-slips/{{rental_slip_id}}/close",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "rental-slips",
+                                "{{rental_slip_id}}",
+                                "close"
+                            ]
+                        },
+                        "description": "Close rental slip after all incidents are closed and balance is fully paid.",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"note\": \"Dong phieu sau khi quyet toan\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Cancel Rental Slip",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/rental-slips/{{rental_cancel_slip_id}}/cancel",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "rental-slips",
+                                "{{rental_cancel_slip_id}}",
+                                "cancel"
+                            ]
+                        },
+                        "description": "Cancel a separate draft rental slip created by the cancel path request.",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"reason\": \"Khong con nhu cau muon\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "Workflow - Incidents & Maintenance",
+            "item": [
+                {
+                    "name": "List Internal Incidents",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/internal-incidents",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "internal-incidents"
+                            ]
+                        },
+                        "description": "List internal incidents."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "List Rental Incidents",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/rental-incidents",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "rental-incidents"
+                            ]
+                        },
+                        "description": "List rental incidents."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Show Sample Rental Incident",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/rental-incidents/{{sample_rental_incident_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "rental-incidents",
+                                "{{sample_rental_incident_id}}"
+                            ]
+                        },
+                        "description": "Show seeded rental incident."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Show Rental Incident",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/rental-incidents/{{rental_incident_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "rental-incidents",
+                                "{{rental_incident_id}}"
+                            ]
+                        },
+                        "description": "Show rental incident created in the active rental flow."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Create Maintenance From Rental Incident",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/rental-incidents/{{rental_incident_id}}/create-maintenance-ticket",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "rental-incidents",
+                                "{{rental_incident_id}}",
+                                "create-maintenance-ticket"
+                            ]
+                        },
+                        "description": "Create maintenance ticket from rental incident.",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"maintenance_type\": \"REPAIR\",\n  \"reported_date\": \"2026-05-19\",\n  \"expected_return_date\": \"2026-05-22\",\n  \"vendor\": \"May nhanh\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "const jsonData = pm.response.json();",
+                                    "if (jsonData.maintenance_ticket && jsonData.maintenance_ticket.id) pm.collectionVariables.set(\"maintenance_ticket_id\", String(jsonData.maintenance_ticket.id));"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Start Maintenance",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/maintenance-tickets/{{maintenance_ticket_id}}/start",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "maintenance-tickets",
+                                "{{maintenance_ticket_id}}",
+                                "start"
+                            ]
+                        },
+                        "description": "Start maintenance.",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"started_date\": \"2026-05-19\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Complete Maintenance",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/maintenance-tickets/{{maintenance_ticket_id}}/complete",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "maintenance-tickets",
+                                "{{maintenance_ticket_id}}",
+                                "complete"
+                            ]
+                        },
+                        "description": "Complete maintenance.",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"return_date\": \"2026-05-21\",\n  \"cost\": 80000\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Return To Stock",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/maintenance-tickets/{{maintenance_ticket_id}}/return-to-stock",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "maintenance-tickets",
+                                "{{maintenance_ticket_id}}",
+                                "return-to-stock"
+                            ]
+                        },
+                        "description": "Return repaired item to stock.",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"inventory_condition_id\": 1\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Resolve Rental Incident",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/rental-incidents/{{rental_incident_id}}/resolve",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "rental-incidents",
+                                "{{rental_incident_id}}",
+                                "resolve"
+                            ]
+                        },
+                        "description": "Resolve the rental incident after maintenance / compensation handling.",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"resolution\": \"Da xu ly va cap nhat boi thuong\",\n  \"compensation_amount\": 150000\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Close Rental Incident",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/rental-incidents/{{rental_incident_id}}/close",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "rental-incidents",
+                                "{{rental_incident_id}}",
+                                "close"
+                            ]
+                        },
+                        "description": "Close the resolved rental incident.",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"note\": \"Dong su co thue\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Create Maintenance Ticket (Cancel Path)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/maintenance-tickets",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "maintenance-tickets"
+                            ]
+                        },
+                        "description": "Create a standalone maintenance ticket for cancel flow.",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"inventory_item_id\": {{maintenance_cancel_inventory_item_id}},\n  \"maintenance_type\": \"REPAIR\",\n  \"reported_date\": \"2026-05-19\",\n  \"vendor\": \"May nhanh\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "const jsonData = pm.response.json();",
+                                    "if (jsonData.maintenance_ticket && jsonData.maintenance_ticket.id) pm.collectionVariables.set(\"maintenance_cancel_ticket_id\", String(jsonData.maintenance_ticket.id));"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Cancel Maintenance Ticket",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/maintenance-tickets/{{maintenance_cancel_ticket_id}}/cancel",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "maintenance-tickets",
+                                "{{maintenance_cancel_ticket_id}}",
+                                "cancel"
+                            ]
+                        },
+                        "description": "Cancel the standalone maintenance ticket and return the item to available status.",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"inventory_condition_id\": 1,\n  \"note\": \"Khong can sua nua\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "List Maintenance Tickets",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/maintenance-tickets",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "maintenance-tickets"
+                            ]
+                        },
+                        "description": "List maintenance tickets."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Show Sample Maintenance Ticket",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/maintenance-tickets/{{sample_maintenance_ticket_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "maintenance-tickets",
+                                "{{sample_maintenance_ticket_id}}"
+                            ]
+                        },
+                        "description": "Show seeded maintenance ticket."
+                    },
+                    "response": []
+                }
+            ]
+        }
+    ],
+    "auth": {
+        "type": "bearer",
+        "bearer": [
+            {
+                "key": "token",
+                "value": "{{access_token}}",
+                "type": "string"
+            }
+        ]
+    },
+    "event": [
+        {
+            "listen": "prerequest",
+            "script": {
+                "type": "text/javascript",
+                "exec": []
+            }
+        },
+        {
+            "listen": "test",
+            "script": {
+                "type": "text/javascript",
+                "exec": []
+            }
+        }
+    ],
+    "variable": [
+        {
+            "key": "base_url",
+            "value": "http://localhost:8000/api",
+            "type": "string"
+        },
+        {
+            "key": "access_token",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "user_id",
+            "value": "1",
+            "type": "string"
+        },
+        {
+            "key": "employee_id",
+            "value": "1",
+            "type": "string"
+        },
+        {
+            "key": "category_id",
+            "value": "1",
+            "type": "string"
+        },
+        {
+            "key": "image_id",
+            "value": "2",
+            "type": "string"
+        },
+        {
+            "key": "costume_id",
+            "value": "15",
+            "type": "string"
+        },
+        {
+            "key": "equipment_prop_id",
+            "value": "19",
+            "type": "string"
+        },
+        {
+            "key": "customer_id",
+            "value": "1",
+            "type": "string"
+        },
+        {
+            "key": "borrow_employee_id",
+            "value": "2",
+            "type": "string"
+        },
+        {
+            "key": "prop_warehouse_id",
+            "value": "2",
+            "type": "string"
+        },
+        {
+            "key": "costume_warehouse_id",
+            "value": "1",
+            "type": "string"
+        },
+        {
+            "key": "borrow_equipment_prop_id",
+            "value": "19",
+            "type": "string"
+        },
+        {
+            "key": "rental_equipment_prop_id",
+            "value": "15",
+            "type": "string"
+        },
+        {
+            "key": "rental_damaged_equipment_prop_id",
+            "value": "16",
+            "type": "string"
+        },
+        {
+            "key": "internal_inventory_item_id",
+            "value": "44",
+            "type": "string"
+        },
+        {
+            "key": "rental_inventory_item_id",
+            "value": "3",
+            "type": "string"
+        },
+        {
+            "key": "rental_inventory_item_2_id",
+            "value": "4",
+            "type": "string"
+        },
+        {
+            "key": "sample_internal_slip_id",
+            "value": "3",
+            "type": "string"
+        },
+        {
+            "key": "sample_rental_slip_id",
+            "value": "3",
+            "type": "string"
+        },
+        {
+            "key": "sample_internal_incident_id",
+            "value": "2",
+            "type": "string"
+        },
+        {
+            "key": "sample_rental_incident_id",
+            "value": "2",
+            "type": "string"
+        },
+        {
+            "key": "sample_maintenance_ticket_id",
+            "value": "2",
+            "type": "string"
+        },
+        {
+            "key": "sample_internal_inventory_item_id",
+            "value": "53",
+            "type": "string"
+        },
+        {
+            "key": "sample_maintenance_inventory_item_id",
+            "value": "26",
+            "type": "string"
+        },
+        {
+            "key": "internal_borrow_slip_id",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "internal_borrow_detail_id",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "internal_incident_id",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "rental_slip_id",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "rental_detail_id",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "rental_incident_id",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "maintenance_ticket_id",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "maintenance_cancel_inventory_item_id",
+            "value": "45",
+            "type": "string"
+        },
+        {
+            "key": "internal_borrow_cancel_slip_id",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "rental_cancel_slip_id",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "rental_remaining_amount",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "maintenance_cancel_ticket_id",
+            "value": "",
+            "type": "string"
+        }
+    ]
+}
