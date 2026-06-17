@@ -7,6 +7,7 @@ use App\Http\Requests\Auth\LoginRequest;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -83,6 +84,36 @@ class AuthController extends Controller
             'expires_in' => auth('api')->factory()->getTTL() * 60,
             'user' => $this->transformUser($user),
         ]);
+    }
+
+    public function updateProfile(Request $request): JsonResponse
+    {
+        /** @var User $user */
+        $user = auth('api')->user();
+
+        $data = $request->validate([
+            'username' => ['sometimes', 'required', 'string', 'max:50', Rule::unique('users', 'username')->ignore($user->id)],
+            'email' => ['sometimes', 'required', 'email', 'max:255'],
+            'password' => ['sometimes', 'nullable', 'string', 'min:6'],
+        ]);
+
+        DB::transaction(function () use ($user, $data): void {
+            if (!empty($data['username'])) {
+                $user->username = $data['username'];
+            }
+            if (!empty($data['password'])) {
+                $user->password = $data['password'];
+            }
+            $user->save();
+
+            if (!empty($data['email']) && $user->employee) {
+                $user->employee->update([
+                    'email' => $data['email'],
+                ]);
+            }
+        });
+
+        return $this->rawSuccess($this->transformUser($user->fresh()));
     }
 
     private function responseWithToken(string $token, User $user, string $message): JsonResponse

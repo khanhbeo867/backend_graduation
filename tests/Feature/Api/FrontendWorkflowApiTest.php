@@ -124,6 +124,60 @@ class FrontendWorkflowApiTest extends TestCase
             ->assertJsonPath('filters.method', 'ALL');
     }
 
+    public function test_buy_order_automatic_invoice_generation_and_revenue(): void
+    {
+        $headers = $this->authenticate();
+        [$item, $inventoryItem] = $this->createInventoryFixture();
+
+        // 1. Create a BUY loan form
+        $loanResponse = $this->withHeaders($headers)
+            ->postJson('/api/loan-forms', [
+                'borrower_name' => 'Nguyen Van B',
+                'borrower_phone' => '0909000002',
+                'borrower_citizen_id_number' => '987654321012',
+                'borrower_role' => 'EXTERNAL',
+                'method' => 'BUY',
+                'deposit_amount' => 0,
+                'loan_items' => [
+                    [
+                        'item_type' => ItemCategoryType::COSTUME->value,
+                        'item_id' => $item->id,
+                        'sku' => $inventoryItem->sku,
+                    ],
+                ],
+            ])
+            ->assertCreated()
+            ->assertJsonPath('status', 'DEPOSIT_PENDING');
+
+        $loanId = $loanResponse->json('id');
+        $loanCode = $loanResponse->json('code');
+
+        // Verify no invoice generated yet
+        $this->assertDatabaseMissing('invoices', [
+            'loan_form_code' => $loanCode,
+        ]);
+
+        // 2. Confirm deposit (marking the BUY order as PAID)
+        $this->withHeaders($headers)
+            ->postJson("/api/loan-forms/{$loanId}/confirm-deposit")
+            ->assertOk()
+            ->assertJsonPath('status', 'PAID');
+
+        // 3. Verify that a PAID invoice has been automatically generated
+        $this->assertDatabaseHas('invoices', [
+            'loan_form_code' => $loanCode,
+            'status' => 'PAID',
+            'payment_amount' => 500000.00,
+            'total_amount' => 500000.00,
+        ]);
+
+        // 4. Verify that the statistics endpoint counts the revenue from this invoice
+        $this->withHeaders($headers)
+            ->getJson('/api/statistics?range=7d&method=BUY')
+            ->assertOk()
+            ->assertJsonPath('overviews.revenue', 500000);
+    }
+
     private function authenticate(): array
     {
         $user = User::factory()->create([

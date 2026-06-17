@@ -14,7 +14,7 @@ use Illuminate\Http\Request;
 
 class StatisticsController extends Controller
 {
-    private const ACTIVE_LOAN_STATUSES = ['BORROWING', 'DEPOSIT_PENDING'];
+    private const ACTIVE_LOAN_STATUSES = ['BORROWING', 'DEPOSIT_PENDING', 'PAID', 'DELIVERED'];
 
     public function index(Request $request): JsonResponse
     {
@@ -176,7 +176,7 @@ class StatisticsController extends Controller
     private function normalizeMethod(mixed $value): string
     {
         return match (strtoupper((string) $value)) {
-            'BORROW' => 'BORROW',
+            'BUY' => 'BUY',
             'RENT' => 'RENT',
             default => 'ALL',
         };

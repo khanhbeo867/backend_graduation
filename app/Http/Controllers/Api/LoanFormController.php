@@ -6,6 +6,7 @@ use App\Enums\InventoryItemStatus;
 use App\Http\Controllers\Api\Concerns\FormatsFrontendWorkflow;
 use App\Http\Controllers\Controller;
 use App\Models\InventoryItem;
+use App\Models\Invoice;
 use App\Models\LoanForm;
 use App\Models\LoanFormItem;
 use Carbon\Carbon;
@@ -84,18 +85,22 @@ class LoanFormController extends Controller
             'borrower_phone' => ['required', 'string', 'max:50'],
             'borrower_citizen_id_number' => ['nullable', 'string', 'max:50'],
             'borrower_role' => ['required', 'string', 'max:50'],
-            'method' => ['required', Rule::in(['BORROW', 'RENT', 'RENTAL'])],
-            'due_date' => ['required', 'date'],
+            'method' => ['required', Rule::in(['BUY', 'RENT', 'RENTAL'])],
+            'due_date' => ['required_unless:method,BUY', 'nullable', 'date'],
             'deposit_amount' => ['nullable', 'numeric', 'min:0'],
+            'remark' => ['nullable', 'string'],
             'loan_items' => ['nullable', 'array'],
             'loan_items.*.sku' => ['nullable', 'string', 'max:255'],
         ]);
 
-        $dueDate = Carbon::parse($data['due_date'])->startOfDay();
-        if ($dueDate->lt(now()->addDay()->startOfDay())) {
-            throw ValidationException::withMessages([
-                'due_date' => ['due_date must be at least tomorrow'],
-            ]);
+        $dueDate = null;
+        if (($data['method'] ?? null) !== 'BUY' && !empty($data['due_date'])) {
+            $dueDate = Carbon::parse($data['due_date'])->startOfDay();
+            if ($dueDate->lt(now()->addDay()->startOfDay())) {
+                throw ValidationException::withMessages([
+                    'due_date' => ['due_date must be at least tomorrow'],
+                ]);
+            }
         }
 
         $loanForm = DB::transaction(function () use ($data, $dueDate, $request): LoanForm {
@@ -112,8 +117,9 @@ class LoanFormController extends Controller
                 'method' => $method,
                 'due_date' => $dueDate,
                 'deposit_amount' => $data['deposit_amount'] ?? 0,
+                'remark' => $data['remark'] ?? null,
                 'created_by' => $createdBy,
-                'status' => $method === 'RENT' ? 'DEPOSIT_PENDING' : 'BORROWING',
+                'status' => in_array($method, ['RENT', 'BUY'], true) ? 'DEPOSIT_PENDING' : 'BORROWING',
                 'is_active' => true,
             ]);
 
@@ -137,6 +143,11 @@ class LoanFormController extends Controller
 
             if ($loanForm->fresh()->status === 'BORROWING' && $skus !== []) {
                 $this->updateInventoryStatusBySkus($skus, InventoryItemStatus::RENTED->value);
+            } elseif ($loanForm->fresh()->status === 'PAID') {
+                if ($skus !== []) {
+                    $this->updateInventoryStatusBySkus($skus, InventoryItemStatus::SOLD->value);
+                }
+                $this->createPaidInvoiceForLoanForm($loanForm->fresh());
             }
 
             return $loanForm->fresh();
@@ -165,14 +176,14 @@ class LoanFormController extends Controller
             'borrower_phone' => ['sometimes', 'required', 'string', 'max:50'],
             'borrower_citizen_id_number' => ['nullable', 'string', 'max:50'],
             'borrower_role' => ['sometimes', 'required', 'string', 'max:50'],
-            'method' => ['sometimes', 'required', Rule::in(['BORROW', 'RENT', 'RENTAL'])],
-            'due_date' => ['sometimes', 'required', 'date'],
+            'method' => ['sometimes', 'required', Rule::in(['BUY', 'RENT', 'RENTAL'])],
+            'due_date' => ['sometimes', 'required_unless:method,BUY', 'nullable', 'date'],
             'deposit_amount' => ['sometimes', 'numeric', 'min:0'],
             'remark' => ['nullable', 'string'],
-            'status' => ['sometimes', Rule::in(['DEPOSIT_PENDING', 'BORROWING', 'RETURNED', 'CANCELED'])],
+            'status' => ['sometimes', Rule::in(['DEPOSIT_PENDING', 'APPROVED', 'SHIPPING', 'DELIVERED', 'BORROWING', 'RETURNED', 'CANCELED', 'PAID'])],
         ]);
 
-        if (isset($data['due_date'])) {
+        if (isset($data['due_date']) && ($data['method'] ?? $loanForm->method) !== 'BUY') {
             $dueDate = Carbon::parse($data['due_date'])->startOfDay();
             if ($dueDate->lt(now()->addDay()->startOfDay())) {
                 throw ValidationException::withMessages([
@@ -180,6 +191,8 @@ class LoanFormController extends Controller
                 ]);
             }
             $data['due_date'] = $dueDate;
+        } elseif (isset($data['due_date']) && ($data['method'] ?? $loanForm->method) === 'BUY') {
+            $data['due_date'] = null;
         }
 
         if (($data['method'] ?? null) === 'RENTAL') {
@@ -187,7 +200,25 @@ class LoanFormController extends Controller
         }
 
         $data['updated_by'] = $this->workflowEmployeeId($request);
+        $oldStatus = $loanForm->status;
         $loanForm->update($data);
+        
+        if (isset($data['status']) && $data['status'] !== $oldStatus) {
+            $loanForm->loadMissing('items');
+            $skus = $loanForm->items->pluck('sku')->all();
+            if ($data['status'] === 'PAID') {
+                $this->updateInventoryStatusBySkus($skus, InventoryItemStatus::SOLD->value);
+                $this->createPaidInvoiceForLoanForm($loanForm->fresh());
+            } elseif ($data['status'] === 'DELIVERED') {
+                $this->updateInventoryStatusBySkus($skus, InventoryItemStatus::SOLD->value);
+                $this->createIssuedInvoiceForLoanForm($loanForm->fresh());
+            } elseif ($data['status'] === 'BORROWING') {
+                $this->updateInventoryStatusBySkus($skus, InventoryItemStatus::RENTED->value);
+            } elseif (in_array($data['status'], ['CANCELED', 'DEPOSIT_PENDING'], true)) {
+                $this->updateInventoryStatusBySkus($skus, InventoryItemStatus::AVAILABLE->value);
+            }
+        }
+
         $this->recomputeLoanFinancials($loanForm->fresh());
 
         return $this->rawSuccess($this->transformLoanForm($this->findLoanForm($id)));
@@ -225,9 +256,14 @@ class LoanFormController extends Controller
 
             if ($loanForm->status === 'BORROWING') {
                 $this->updateInventoryStatusBySkus($skus, InventoryItemStatus::RENTED->value);
+            } elseif ($loanForm->status === 'PAID') {
+                $this->updateInventoryStatusBySkus($skus, InventoryItemStatus::SOLD->value);
             }
 
             $this->recomputeLoanFinancials($loanForm->fresh());
+            if ($loanForm->fresh()->status === 'PAID') {
+                $this->createPaidInvoiceForLoanForm($loanForm->fresh());
+            }
         });
 
         return $this->rawSuccess($this->transformLoanForm($this->findLoanForm($id)));
@@ -237,19 +273,78 @@ class LoanFormController extends Controller
     {
         $loanForm = LoanForm::query()->with('items')->findOrFail($id);
 
-        if ($loanForm->method !== 'RENT') {
+        if (!in_array($loanForm->method, ['RENT', 'BUY'], true)) {
             throw ValidationException::withMessages([
-                'method' => ['Only rental loan forms can confirm deposit'],
+                'method' => ['Only rental or buy loan forms can be confirmed'],
             ]);
         }
 
-        $requiredDeposit = (float) $loanForm->total_item_price_amount;
+        DB::transaction(function () use ($loanForm): void {
+            if ($loanForm->method === 'RENT') {
+                $requiredDeposit = (float) $loanForm->total_item_price_amount;
+                $loanForm->update([
+                    'deposit_amount' => $requiredDeposit,
+                    'status' => 'BORROWING',
+                ]);
+
+                $this->updateInventoryStatusBySkus($loanForm->items->pluck('sku')->all(), InventoryItemStatus::RENTED->value);
+            } else {
+                $loanForm->update([
+                    'status' => 'APPROVED',
+                ]);
+            }
+        });
+
+        return $this->rawSuccess($this->transformLoanForm($this->findLoanForm($id)));
+    }
+
+    public function startShipping(int $id): JsonResponse
+    {
+        $loanForm = LoanForm::query()->findOrFail($id);
+
+        if ($loanForm->status !== 'APPROVED') {
+            throw ValidationException::withMessages([
+                'status' => ['Only approved loan forms can be shipped'],
+            ]);
+        }
+
+        if ($loanForm->method !== 'BUY') {
+            throw ValidationException::withMessages([
+                'method' => ['Only buy orders can be shipped'],
+            ]);
+        }
+
         $loanForm->update([
-            'deposit_amount' => $requiredDeposit,
-            'status' => 'BORROWING',
+            'status' => 'SHIPPING',
         ]);
 
-        $this->updateInventoryStatusBySkus($loanForm->items->pluck('sku')->all(), InventoryItemStatus::RENTED->value);
+        return $this->rawSuccess($this->transformLoanForm($this->findLoanForm($id)));
+    }
+
+    public function completeDelivery(int $id): JsonResponse
+    {
+        $loanForm = LoanForm::query()->with('items')->findOrFail($id);
+
+        if ($loanForm->status !== 'SHIPPING') {
+            throw ValidationException::withMessages([
+                'status' => ['Only shipping loan forms can complete delivery'],
+            ]);
+        }
+
+        if ($loanForm->method !== 'BUY') {
+            throw ValidationException::withMessages([
+                'method' => ['Only buy orders can complete delivery'],
+            ]);
+        }
+
+        DB::transaction(function () use ($loanForm): void {
+            $loanForm->update([
+                'status' => 'DELIVERED',
+            ]);
+
+            $this->updateInventoryStatusBySkus($loanForm->items->pluck('sku')->all(), InventoryItemStatus::SOLD->value);
+            $this->createIssuedInvoiceForLoanForm($loanForm->fresh());
+        });
 
         return $this->rawSuccess($this->transformLoanForm($this->findLoanForm($id)));
     }
@@ -283,8 +378,12 @@ class LoanFormController extends Controller
             }
         }
 
-        $this->updateInventoryStatusBySkus($skus, InventoryItemStatus::RENTED->value);
-        $loanForm->update(['status' => 'BORROWING']);
+        $this->updateInventoryStatusBySkus($skus, $loanForm->method === 'BUY' ? InventoryItemStatus::SOLD->value : InventoryItemStatus::RENTED->value);
+        $loanForm->update(['status' => $loanForm->method === 'BUY' ? 'PAID' : 'BORROWING']);
+
+        if ($loanForm->method === 'BUY') {
+            $this->createPaidInvoiceForLoanForm($loanForm->fresh());
+        }
 
         return $this->rawSuccess($this->transformLoanForm($this->findLoanForm($id)));
     }
@@ -340,6 +439,9 @@ class LoanFormController extends Controller
 
         if ($loanForm = LoanForm::query()->where('code', $item->loan_form_code)->first()) {
             $this->recomputeLoanFinancials($loanForm);
+            if ($loanForm->fresh()->status === 'PAID') {
+                $this->createPaidInvoiceForLoanForm($loanForm->fresh());
+            }
         }
 
         return $this->rawSuccess($this->transformLoanItem($item->fresh(['inventory.warehouse', 'item'])));
@@ -353,9 +455,98 @@ class LoanFormController extends Controller
 
         if ($loanForm) {
             $this->recomputeLoanFinancials($loanForm);
+            if ($loanForm->fresh()->status === 'PAID') {
+                $this->createPaidInvoiceForLoanForm($loanForm->fresh());
+            }
         }
 
         return $this->rawSuccess(['message' => 'Loan form item deleted successfully']);
+    }
+
+    private function createPaidInvoiceForLoanForm(LoanForm $loanForm): void
+    {
+        if ($loanForm->method !== 'BUY') {
+            return;
+        }
+
+        $totalAmount = (float) $loanForm->total_item_price_amount;
+
+        $invoice = Invoice::query()
+            ->where('loan_form_code', $loanForm->code)
+            ->first();
+
+        if ($invoice) {
+            if ((float) $invoice->total_amount !== $totalAmount) {
+                $invoice->update([
+                    'total_amount' => $totalAmount,
+                    'payment_amount' => $totalAmount,
+                    'status' => 'PAID',
+                    'paid_at' => $invoice->paid_at ?? now(),
+                ]);
+            }
+            return;
+        }
+
+        Invoice::query()->create([
+            'code' => $this->nextWorkflowCode(Invoice::class, 'INV'),
+            'loan_form_code' => $loanForm->code,
+            'total_amount' => $totalAmount,
+            'payment_amount' => $totalAmount,
+            'rental_amount' => 0,
+            'penalty_amount' => 0,
+            'refund_amount' => 0,
+            'payment_method' => 'CASH',
+            'payer_name' => $loanForm->borrower_name,
+            'payer_phone' => $loanForm->borrower_phone,
+            'payer_citizen_id_number' => $loanForm->borrower_citizen_id_number,
+            'paid_at' => now(),
+            'note' => 'Auto-generated invoice for BUY order ' . $loanForm->code,
+            'created_by' => $loanForm->updated_by ?? $loanForm->created_by,
+            'status' => 'PAID',
+            'is_active' => true,
+        ]);
+    }
+
+    private function createIssuedInvoiceForLoanForm(LoanForm $loanForm): void
+    {
+        if ($loanForm->method !== 'BUY') {
+            return;
+        }
+
+        $totalAmount = (float) $loanForm->total_item_price_amount;
+
+        $invoice = Invoice::query()
+            ->where('loan_form_code', $loanForm->code)
+            ->first();
+
+        if ($invoice) {
+            if ((float) $invoice->total_amount !== $totalAmount) {
+                $invoice->update([
+                    'total_amount' => $totalAmount,
+                    'payment_amount' => 0,
+                ]);
+            }
+            return;
+        }
+
+        Invoice::query()->create([
+            'code' => $this->nextWorkflowCode(Invoice::class, 'INV'),
+            'loan_form_code' => $loanForm->code,
+            'total_amount' => $totalAmount,
+            'payment_amount' => 0,
+            'rental_amount' => 0,
+            'penalty_amount' => 0,
+            'refund_amount' => 0,
+            'payment_method' => 'CASH',
+            'payer_name' => $loanForm->borrower_name,
+            'payer_phone' => $loanForm->borrower_phone,
+            'payer_citizen_id_number' => $loanForm->borrower_citizen_id_number,
+            'paid_at' => null,
+            'note' => 'Invoice created on delivery for BUY order ' . $loanForm->code,
+            'created_by' => $loanForm->updated_by ?? $loanForm->created_by,
+            'status' => 'ISSUED',
+            'is_active' => true,
+        ]);
     }
 
     private function findLoanForm(int $id): LoanForm

@@ -242,8 +242,15 @@ trait HandlesCatalogItems
     protected function transformCatalogConditions(EquipmentProp $item): array
     {
         $inventoryItems = $item->inventoryItems
-            ->where('is_active', true)
-            ->filter(fn (InventoryItem $inventoryItem): bool => $inventoryItem->inventoryCondition !== null)
+            ->filter(fn (InventoryItem $ii): bool => 
+                $ii->is_active && 
+                $ii->inventoryCondition !== null &&
+                !in_array($ii->status, [
+                    InventoryItemStatus::SOLD,
+                    InventoryItemStatus::LOST,
+                    InventoryItemStatus::DISPOSED
+                ], true)
+            )
             ->values();
 
         return $inventoryItems
@@ -281,7 +288,14 @@ trait HandlesCatalogItems
     protected function transformCatalogInventory(EquipmentProp $item): array
     {
         $inventoryItems = $item->inventoryItems
-            ->where('is_active', true)
+            ->filter(fn (InventoryItem $ii): bool => 
+                $ii->is_active && 
+                !in_array($ii->status, [
+                    InventoryItemStatus::SOLD,
+                    InventoryItemStatus::LOST,
+                    InventoryItemStatus::DISPOSED
+                ], true)
+            )
             ->values();
 
         $isAvailable = fn (InventoryItem $inventoryItem): bool => $inventoryItem->status === InventoryItemStatus::AVAILABLE

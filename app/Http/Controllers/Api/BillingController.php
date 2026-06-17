@@ -171,14 +171,23 @@ class BillingController extends Controller
             'note' => ['nullable', 'string'],
             'rental_days' => ['nullable', 'integer', 'min:1'],
             'extra_amount' => ['nullable', 'numeric', 'min:0'],
-            'status' => ['nullable', Rule::in(['ISSUED', 'PAID', 'CANCELED'])],
+            'status' => ['nullable', Rule::in(['ISSUED', 'UNCONFIRMED', 'PAID', 'CANCELED'])],
         ]);
+
+        $loanForm = null;
+        if (! empty($data['loan_form_code'])) {
+            $loanForm = \App\Models\LoanForm::where('code', $data['loan_form_code'])->first();
+        }
 
         $resolvedTotal = (float) ($data['total_amount'] ?? 0);
         if ($resolvedTotal <= 0) {
-            $resolvedTotal = $this->resolveRentalAmount($data['loan_form_code'] ?? null, (int) ($data['rental_days'] ?? 1))
-                + $this->resolvePenaltyAmount($data['penalty_form_code'] ?? null)
-                + (float) ($data['extra_amount'] ?? 0);
+            if ($loanForm && $loanForm->method === 'BUY') {
+                $resolvedTotal = (float) $loanForm->total_item_price_amount + (float) ($data['extra_amount'] ?? 0);
+            } else {
+                $resolvedTotal = $this->resolveRentalAmount($data['loan_form_code'] ?? null, (int) ($data['rental_days'] ?? 1))
+                    + $this->resolvePenaltyAmount($data['penalty_form_code'] ?? null)
+                    + (float) ($data['extra_amount'] ?? 0);
+            }
         }
 
         $status = $data['status'] ?? 'ISSUED';
@@ -190,7 +199,7 @@ class BillingController extends Controller
             'penalty_form_code' => $data['penalty_form_code'] ?? null,
             'total_amount' => $resolvedTotal,
             'payment_amount' => $data['payment_amount'] ?? $resolvedTotal,
-            'rental_amount' => $data['rental_amount'] ?? $this->resolveRentalAmount($data['loan_form_code'] ?? null, (int) ($data['rental_days'] ?? 1)),
+            'rental_amount' => $data['rental_amount'] ?? ($loanForm && $loanForm->method === 'BUY' ? 0 : $this->resolveRentalAmount($data['loan_form_code'] ?? null, (int) ($data['rental_days'] ?? 1))),
             'penalty_amount' => $data['penalty_amount'] ?? $this->resolvePenaltyAmount($data['penalty_form_code'] ?? null),
             'refund_amount' => $data['refund_amount'] ?? 0,
             'payment_method' => $data['payment_method'] ?? null,
@@ -204,13 +213,8 @@ class BillingController extends Controller
             'is_active' => true,
         ]);
 
-        if ($status === 'PAID' && $invoice->penalty_form_code) {
-            PenaltyForm::query()
-                ->where('code', $invoice->penalty_form_code)
-                ->update([
-                    'status' => 'PAID',
-                    'updated_at' => now(),
-                ]);
+        if ($status === 'PAID') {
+            $this->processInvoicePaid($invoice);
         }
 
         return $this->rawSuccess($this->transformInvoice($this->findInvoice($invoice->id)), Response::HTTP_CREATED);
@@ -235,13 +239,18 @@ class BillingController extends Controller
             'payer_citizen_id_number' => ['nullable', 'string', 'max:50'],
             'paid_at' => ['nullable', 'date'],
             'note' => ['nullable', 'string'],
-            'status' => ['sometimes', Rule::in(['ISSUED', 'PAID', 'CANCELED'])],
+            'status' => ['sometimes', Rule::in(['ISSUED', 'UNCONFIRMED', 'PAID', 'CANCELED'])],
         ]);
 
+        $oldStatus = $invoice->status;
         $invoice->update([
             ...$data,
             'updated_by' => $this->workflowEmployeeId($request),
         ]);
+
+        if (isset($data['status']) && $data['status'] === 'PAID' && $oldStatus !== 'PAID') {
+            $this->processInvoicePaid($invoice->fresh());
+        }
 
         return $this->rawSuccess($this->transformInvoice($this->findInvoice($id)));
     }
@@ -278,6 +287,40 @@ class BillingController extends Controller
             'payment_amount' => (float) $invoice->payment_amount > 0 ? $invoice->payment_amount : $invoice->total_amount,
         ]);
 
+        $this->processInvoicePaid($invoice);
+
+        return $this->rawSuccess($this->transformInvoice($this->findInvoice($id)));
+    }
+
+    public function customerPay(int $id): JsonResponse
+    {
+        $invoice = Invoice::query()->findOrFail($id);
+
+        if ($invoice->status !== 'ISSUED') {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'status' => ['Only issued invoices can be marked as customer paid pending confirmation'],
+            ]);
+        }
+
+        $invoice->update([
+            'status' => 'UNCONFIRMED',
+        ]);
+
+        return $this->rawSuccess($this->transformInvoice($this->findInvoice($id)));
+    }
+
+    private function updateInventoryStatusBySkus(array $skus, string $status): void
+    {
+        \App\Models\InventoryItem::query()
+            ->whereIn('sku', array_unique(array_filter($skus)))
+            ->update([
+                'status' => $status,
+                'updated_at' => now(),
+            ]);
+    }
+
+    private function processInvoicePaid(Invoice $invoice): void
+    {
         if ($invoice->penalty_form_code) {
             PenaltyForm::query()
                 ->where('code', $invoice->penalty_form_code)
@@ -287,7 +330,18 @@ class BillingController extends Controller
                 ]);
         }
 
-        return $this->rawSuccess($this->transformInvoice($this->findInvoice($id)));
+        if ($invoice->loan_form_code) {
+            $loanForm = \App\Models\LoanForm::where('code', $invoice->loan_form_code)->first();
+            if ($loanForm) {
+                if ($loanForm->method === 'BUY') {
+                    $loanForm->update(['status' => 'PAID']);
+                    $this->updateInventoryStatusBySkus($loanForm->items->pluck('sku')->all(), \App\Enums\InventoryItemStatus::SOLD->value);
+                } else {
+                    $loanForm->update(['status' => 'BORROWING']);
+                    $this->updateInventoryStatusBySkus($loanForm->items->pluck('sku')->all(), \App\Enums\InventoryItemStatus::RENTED->value);
+                }
+            }
+        }
     }
 
     private function findPenaltyForm(int $id): PenaltyForm

@@ -298,6 +298,22 @@ class JsonMockDataSeeder extends Seeder
         }
     }
 
+    private ?int $dateShiftSeconds = null;
+
+    private function shiftDate(mixed $dateStr): mixed
+    {
+        if ($dateStr === null || $dateStr === '') {
+            return null;
+        }
+
+        if ($this->dateShiftSeconds === null) {
+            $maxJsonDate = \Carbon\Carbon::parse('2026-05-26T03:09:39.000Z');
+            $this->dateShiftSeconds = now()->timestamp - $maxJsonDate->timestamp;
+        }
+
+        return \Carbon\Carbon::parse($dateStr)->addSeconds($this->dateShiftSeconds);
+    }
+
     private function seedFrontendWorkflow(array $data): void
     {
         foreach ($data['loan_forms'] ?? [] as $row) {
@@ -310,18 +326,22 @@ class JsonMockDataSeeder extends Seeder
                     'borrower_phone' => $row['borrower_phone'],
                     'borrower_citizen_id_number' => $row['borrower_citizen_id_number'] ?? null,
                     'borrower_role' => $row['borrower_role'],
-                    'method' => $row['method'],
-                    'due_date' => $row['due_date'] ?? null,
+                    'method' => $row['method'] === 'BORROW'
+                        ? ($row['status'] === 'RETURNED' ? 'RENT' : 'BUY')
+                        : $row['method'],
+                    'due_date' => $this->shiftDate($row['due_date'] ?? null),
                     'rental_days' => $row['rental_days'] ?? 0,
                     'total_rental_amount' => $row['total_rental_amount'] ?? 0,
                     'total_item_price_amount' => $row['total_item_price_amount'] ?? 0,
                     'deposit_amount' => $row['deposit_amount'] ?? 0,
                     'created_by' => $this->existingEmployeeId($row['created_by'] ?? null),
                     'updated_by' => $this->existingEmployeeId($row['updated_by'] ?? null),
-                    'status' => $row['status'] ?? 'DEPOSIT_PENDING',
+                    'status' => ($row['method'] === 'BORROW' && $row['status'] === 'BORROWING') 
+                        ? 'PAID' 
+                        : ($row['status'] ?? 'DEPOSIT_PENDING'),
                     'remark' => $row['remark'] ?? null,
-                    'created_at' => $row['created_at'] ?? now(),
-                    'updated_at' => $row['updated_at'] ?? now(),
+                    'created_at' => $this->shiftDate($row['created_at'] ?? now()),
+                    'updated_at' => $this->shiftDate($row['updated_at'] ?? now()),
                 ]
             );
         }
@@ -345,8 +365,8 @@ class JsonMockDataSeeder extends Seeder
                     'created_by' => $this->existingEmployeeId($row['created_by'] ?? null),
                     'updated_by' => $this->existingEmployeeId($row['updated_by'] ?? null),
                     'remark' => $row['remark'] ?? null,
-                    'created_at' => $row['created_at'] ?? now(),
-                    'updated_at' => $row['updated_at'] ?? now(),
+                    'created_at' => $this->shiftDate($row['created_at'] ?? now()),
+                    'updated_at' => $this->shiftDate($row['updated_at'] ?? now()),
                 ]
             );
         }
@@ -363,12 +383,12 @@ class JsonMockDataSeeder extends Seeder
                     'returnee_citizen_id_number' => $row['returnee_citizen_id_number'] ?? null,
                     'remark' => $row['remark'] ?? null,
                     'returnee_role' => $row['returnee_role'] ?? null,
-                    'method' => $row['method'] ?? null,
+                    'method' => ($row['method'] ?? null) === 'BORROW' ? 'RENT' : ($row['method'] ?? null),
                     'created_by' => $this->existingEmployeeId($row['created_by'] ?? null),
                     'updated_by' => $this->existingEmployeeId($row['updated_by'] ?? null),
                     'status' => $row['status'] ?? 'INSPECTED',
-                    'created_at' => $row['created_at'] ?? now(),
-                    'updated_at' => $row['updated_at'] ?? now(),
+                    'created_at' => $this->shiftDate($row['created_at'] ?? now()),
+                    'updated_at' => $this->shiftDate($row['updated_at'] ?? now()),
                 ]
             );
         }
@@ -391,8 +411,8 @@ class JsonMockDataSeeder extends Seeder
                     'created_by' => $this->existingEmployeeId($row['created_by'] ?? null),
                     'updated_by' => $this->existingEmployeeId($row['updated_by'] ?? null),
                     'remark' => $row['remark'] ?? null,
-                    'created_at' => $row['created_at'] ?? now(),
-                    'updated_at' => $row['updated_at'] ?? now(),
+                    'created_at' => $this->shiftDate($row['created_at'] ?? now()),
+                    'updated_at' => $this->shiftDate($row['updated_at'] ?? now()),
                 ]
             );
         }
@@ -411,8 +431,8 @@ class JsonMockDataSeeder extends Seeder
                     'updated_by' => $this->existingEmployeeId($row['updated_by'] ?? null),
                     'status' => $row['status'] ?? 'ISSUED',
                     'remark' => $row['remark'] ?? null,
-                    'created_at' => $row['created_at'] ?? now(),
-                    'updated_at' => $row['updated_at'] ?? now(),
+                    'created_at' => $this->shiftDate($row['created_at'] ?? now()),
+                    'updated_at' => $this->shiftDate($row['updated_at'] ?? now()),
                 ]
             );
         }
@@ -435,13 +455,13 @@ class JsonMockDataSeeder extends Seeder
                     'payer_name' => $row['payer_name'] ?? null,
                     'payer_phone' => $row['payer_phone'] ?? null,
                     'payer_citizen_id_number' => $row['payer_citizen_id_number'] ?? null,
-                    'paid_at' => $row['paid_at'] ?? null,
+                    'paid_at' => $this->shiftDate($row['paid_at'] ?? null),
                     'note' => $row['note'] ?? null,
                     'created_by' => $this->existingEmployeeId($row['created_by'] ?? null),
                     'updated_by' => $this->existingEmployeeId($row['updated_by'] ?? null),
                     'status' => $row['status'] ?? 'ISSUED',
-                    'created_at' => $row['created_at'] ?? now(),
-                    'updated_at' => $row['updated_at'] ?? now(),
+                    'created_at' => $this->shiftDate($row['created_at'] ?? now()),
+                    'updated_at' => $this->shiftDate($row['updated_at'] ?? now()),
                 ]
             );
         }

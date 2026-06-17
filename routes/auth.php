@@ -11,5 +11,6 @@ Route::prefix('auth')->controller(AuthController::class)->group(function () {
     Route::middleware('auth:api')->group(function () {
         Route::get('me', 'me');
         Route::post('logout', 'logout');
+        Route::patch('profile', 'updateProfile');
     });
 });

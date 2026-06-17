@@ -127,7 +127,12 @@ class InventoryController extends Controller
             ->with(self::INVENTORY_ITEM_RELATIONS);
 
         if (! $request->boolean('include_inactive')) {
-            $query->where('is_active', true);
+            $query->where('is_active', true)
+                ->whereNotIn('status', [
+                    InventoryItemStatus::SOLD->value,
+                    InventoryItemStatus::LOST->value,
+                    InventoryItemStatus::DISPOSED->value,
+                ]);
         }
 
         foreach (['item_id', 'inventory_condition_id', 'warehouse_id', 'status', 'size', 'sku'] as $field) {
@@ -178,7 +183,12 @@ class InventoryController extends Controller
             ->with(self::INVENTORY_ITEM_RELATIONS);
 
         if (! $request->boolean('include_inactive')) {
-            $query->where('is_active', true);
+            $query->where('is_active', true)
+                ->whereNotIn('status', [
+                    InventoryItemStatus::SOLD->value,
+                    InventoryItemStatus::LOST->value,
+                    InventoryItemStatus::DISPOSED->value,
+                ]);
         }
 
         foreach (['item_id', 'inventory_condition_id', 'warehouse_id', 'status', 'size', 'sku'] as $field) {
@@ -221,7 +231,12 @@ class InventoryController extends Controller
             ->with(self::INVENTORY_ITEM_RELATIONS);
 
         if (! $request->boolean('include_inactive')) {
-            $query->where('is_active', true);
+            $query->where('is_active', true)
+                ->whereNotIn('status', [
+                    InventoryItemStatus::SOLD->value,
+                    InventoryItemStatus::LOST->value,
+                    InventoryItemStatus::DISPOSED->value,
+                ]);
         }
 
         foreach (['item_id', 'inventory_condition_id', 'warehouse_id', 'status', 'size', 'sku'] as $field) {

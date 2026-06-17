@@ -17,6 +17,8 @@ Route::middleware('auth:api')->group(function (): void {
         Route::delete('/{id}', 'destroy');
         Route::post('/{id}/items', 'addItems');
         Route::post('/{id}/confirm-deposit', 'confirmDeposit');
+        Route::post('/{id}/start-shipping', 'startShipping');
+        Route::post('/{id}/complete-delivery', 'completeDelivery');
         Route::post('/{id}/checkout', 'checkout');
         Route::post('/{id}/cancel', 'cancel');
     });
@@ -60,5 +62,6 @@ Route::middleware('auth:api')->group(function (): void {
         Route::delete('/{id}', 'invoiceDestroy');
         Route::post('/{id}/issue', 'invoiceIssue');
         Route::post('/{id}/pay', 'invoicePay');
+        Route::post('/{id}/customer-pay', 'customerPay');
     });
 });

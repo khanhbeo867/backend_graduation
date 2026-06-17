@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('borrower_phone');
             $table->string('borrower_citizen_id_number')->nullable();
             $table->string('borrower_role', 50);
-            $table->enum('method', ['BORROW', 'RENT']);
+            $table->enum('method', ['BUY', 'RENT']);
             $table->dateTime('due_date')->nullable();
             $table->unsignedInteger('rental_days')->default(0);
             $table->decimal('total_rental_amount', 15, 2)->default(0);
@@ -25,8 +25,7 @@ return new class extends Migration
             $table->decimal('deposit_amount', 15, 2)->default(0);
             $table->foreignId('created_by')->nullable()->constrained('employees')->nullOnDelete();
             $table->foreignId('updated_by')->nullable()->constrained('employees')->nullOnDelete();
-            $table->enum('status', ['DEPOSIT_PENDING', 'BORROWING', 'RETURNED', 'CANCELED'])
-                ->default('DEPOSIT_PENDING');
+            $table->string('status', 50)->default('DEPOSIT_PENDING');
             $table->text('remark')->nullable();
             $table->timestamps();
 
@@ -67,7 +66,7 @@ return new class extends Migration
             $table->string('returnee_citizen_id_number')->nullable();
             $table->text('remark')->nullable();
             $table->string('returnee_role', 50)->nullable();
-            $table->enum('method', ['BORROW', 'RENT'])->nullable();
+            $table->enum('method', ['BUY', 'RENT'])->nullable();
             $table->foreignId('created_by')->nullable()->constrained('employees')->nullOnDelete();
             $table->foreignId('updated_by')->nullable()->constrained('employees')->nullOnDelete();
             $table->enum('status', ['RETURNED', 'INSPECTED', 'COMPLETED', 'CANCELED'])

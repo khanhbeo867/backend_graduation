@@ -38,8 +38,15 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role' => EnsureUserHasRole::class,
         ]);
+
+        $middleware->redirectGuestsTo(fn (Request $request) => null);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        $exceptions->shouldRenderJsonWhen(static function (Request $request): bool {
+            $apiPrefix = trim((string) config('app.api_prefix', 'api'), '/');
+            return $request->is($apiPrefix) || $request->is($apiPrefix.'/*');
+        });
+
         $exceptions->respond(function (HttpResponse $response, Throwable $exception, Request $request) {
             $apiPrefix = trim((string) config('app.api_prefix', 'api'), '/');
             $isApiRequest = $request->is($apiPrefix) || $request->is($apiPrefix.'/*');

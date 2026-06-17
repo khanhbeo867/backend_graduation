@@ -1,5 +1,4 @@
 # Diamond API
-
 Backend API cho hệ thống quản lý vận hành nội bộ, tập trung vào các nhóm nghiệp vụ khách hàng, nhân sự, sự kiện, kho vật tư và lương thưởng. Repository hiện đã có nền tảng xác thực JWT, chuẩn response JSON thống nhất, middleware phân quyền theo vai trò và bộ migration cho các module cốt lõi.
 
 ## Mục tiêu hiện tại
